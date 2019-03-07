@@ -5,165 +5,177 @@
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script src="./js/jquery-3.3.1.min.js"></script>
     <script src="./js/moment.js"></script>
+    <style>
+      .page-padding {
+        padding: 20px 20px 20px 20px;
+      }
+      #create-timeline {
+        margin-bottom: 20px;
+      }
+    </style>
   </head>
   <body>
-    <form>
-      <div class="form-group">
-        <textarea class="form-control" id="sumosearch" rows="3" placeholder=""></textarea>
-      </div>
-    </form>
-    <button type="button" id="create-timeline" class="btn btn-info">Create Timeline</button>
-    <div id="chart" style="height: 100%"></div>
-
+    <div class="page-padding">
+      <form>
+        <div class="input-group">
+          <div class="input-group-prepend">
+            <span class="input-group-text">paste sumo logic csv results</span>
+          </div>
+          <textarea id="sumosearch" class="form-control" aria-label="past csv text"></textarea>
+          <!--textarea class="form-control" id="sumosearch" rows="3" placeholder=""></textarea-->
+        </div>
+      </form>
+      <button type="button" id="create-timeline" class="btn btn-info">Create Timeline</button>
+      <div id="chart" style="height: 100%"></div>
+    </div>
     <script>
-    google.charts.load("current", {packages:["timeline"]});
+      google.charts.load("current", {packages:["timeline"]});
 
-  function csvtoJS(csv){
-      var lines=csv.split("\n");
-      var result = [];
-      var headers=lines[0].split(",");
-      for(var i=1;i<lines.length;i++){
-        var obj = {};
-        var currentline=lines[i].split(",");
+      function csvtoJS(csv){
+          var lines=csv.split("\n");
+          var result = [];
+          var headers=lines[0].split(",");
+          for(var i=1;i<lines.length;i++){
+            var obj = {};
+            var currentline=lines[i].split(",");
 
-        for(var j=0;j<headers.length;j++){
-          if (currentline[j] !== undefined) {
-            var ob = currentline[j].split('"').join('');
+            for(var j=0;j<headers.length;j++){
+              if (currentline[j] !== undefined) {
+                var ob = currentline[j].split('"').join('');
+              }
+              obj[headers[j].split('"').join('')] = ob;
+            }
+            result.push(obj);
           }
-          obj[headers[j].split('"').join('')] = ob;
-        }
-        result.push(obj);
+          return result;
       }
-      return result;
-  }
 
-  function messagesToCollectionStucture(messages) {
-    var collections = {};
+      function messagesToCollectionStucture(messages) {
+        var collections = {};
 
-    messages.forEach(function(message) {
+        messages.forEach(function(message) {
 
-      var record = {status: message['status'].replace(/["']/g, ""), time: message['_messagetime']};
+          var record = {status: message['status'].replace(/["']/g, ""), time: message['_messagetime']};
 
-      if (message.title.length > 0) {
-        if (typeof(collections[message.title]) !== 'undefined') {
-          collections[message.title].push(record);
-        }
-        else {
-          collections[message.title] = [record];
-        }
-      }
-    });
-    return collections;
-  }
-
-
-  function createChartData(collections, min_max_datetimes) {
-    var chart_data = [];
-
-    for (var key in collections) {
-      var collection_data = [];
-
-      if (key.length > 0) {
-        collections[key].forEach(function (record) {
-
-          if (record.status === 'WORKING' && collection_data.length == 0) {
-          // do nothing so as to ensure the first piece of data is 'FAILED'
+          if (message.title.length > 0) {
+            if (typeof(collections[message.title]) !== 'undefined') {
+              collections[message.title].push(record);
+            }
+            else {
+              collections[message.title] = [record];
+            }
           }
+        });
+        return collections;
+      }
 
-          else {
-            if (record.status === "FAILED") {
-              if (collection_data.length == 0) {
-                collection_data.push([key, '', moment(record.time, "DD/MM/YYYY HH:mm:ss:SSS Z").toDate(), null]);
-              } else {
-                if (collection_data[collection_data.length - 1][3] != null) {
-                  collection_data.push([key, '', moment(record.time, "DD/MM/YYYY HH:mm:ss:SSS Z").toDate(), null]);
+
+      function createChartData(collections, min_max_datetimes) {
+        var chart_data = [];
+
+        for (var key in collections) {
+          var collection_data = [];
+
+          if (key.length > 0) {
+            collections[key].forEach(function (record) {
+
+              if (record.status === 'WORKING' && collection_data.length == 0) {
+              // do nothing so as to ensure the first piece of data is 'FAILED'
+              }
+
+              else {
+                if (record.status === "FAILED") {
+                  if (collection_data.length == 0) {
+                    collection_data.push([key, '', moment(record.time, "DD/MM/YYYY HH:mm:ss:SSS Z").toDate(), null]);
+                  } else {
+                    if (collection_data[collection_data.length - 1][3] != null) {
+                      collection_data.push([key, '', moment(record.time, "DD/MM/YYYY HH:mm:ss:SSS Z").toDate(), null]);
+                    }
+                  }
+                }
+
+                if (record.status === "WORKING") {
+                  collection_data[collection_data.length - 1][3] = moment(record.time, "DD/MM/YYYY HH:mm:ss:SSS Z").toDate();
                 }
               }
-            }
 
-            if (record.status === "WORKING") {
-              collection_data[collection_data.length - 1][3] = moment(record.time, "DD/MM/YYYY HH:mm:ss:SSS Z").toDate();
+          });}
+
+          chart_data = chart_data.concat(collection_data);
+        }
+
+
+        // set all un-set endtimes to max_end_time
+        chart_data.forEach(function(data_item) {
+          if (data_item[3] == null) {
+            data_item[3] = min_max_datetimes.max.toDate();
+          }
+        });
+
+        return chart_data;
+      }
+
+      function createChart(data) {
+        var container = document.getElementById('chart');
+        var chart = new google.visualization.Timeline(container);
+        var dataTable = new google.visualization.DataTable();
+
+        dataTable.addColumn({ type: 'string', id: 'Room' });
+        dataTable.addColumn({ type: 'string', id: 'Name' });
+        dataTable.addColumn({ type: 'date', id: 'Start' });
+        dataTable.addColumn({ type: 'date', id: 'End' });
+        dataTable.addRows(data);
+
+        var options = {
+          timeline: { singleColor: '#8d8' }
+        };
+
+        chart.draw(dataTable, options);
+      }
+
+      function minMaxDateTimes(obj_arr) {
+        var min_datetime = null;
+        var max_datetime = null;
+
+        obj_arr.forEach(function(obj) {
+          var this_datetime = moment(obj["_messagetime"], "DD/MM/YYYY HH:mm:ss:SSS Z");
+
+
+          if (max_datetime == null) {
+              max_datetime = this_datetime;
+          }
+          else {
+            if (this_datetime.isAfter(max_datetime)) {
+              max_datetime = this_datetime;
             }
           }
 
-      });}
+          if (min_datetime == null) {
+              min_datetime = this_datetime;
+          }
+          else {
+            if (this_datetime.isBefore(min_datetime)) {
+              min_datetime = this_datetime;
+            }
+          }
+        });
 
-      chart_data = chart_data.concat(collection_data);
-    }
-
-
-    // set all un-set endtimes to max_end_time
-    chart_data.forEach(function(data_item) {
-      if (data_item[3] == null) {
-        data_item[3] = min_max_datetimes.max.toDate();
-      }
-    });
-
-    return chart_data;
-  }
-
-  function createChart(data) {
-    var container = document.getElementById('chart');
-    var chart = new google.visualization.Timeline(container);
-    var dataTable = new google.visualization.DataTable();
-
-    dataTable.addColumn({ type: 'string', id: 'Room' });
-    dataTable.addColumn({ type: 'string', id: 'Name' });
-    dataTable.addColumn({ type: 'date', id: 'Start' });
-    dataTable.addColumn({ type: 'date', id: 'End' });
-    dataTable.addRows(data);
-
-    var options = {
-      timeline: { singleColor: '#8d8' }
-    };
-
-    chart.draw(dataTable, options);
-  }
-
-  function minMaxDateTimes(obj_arr) {
-    var min_datetime = null;
-    var max_datetime = null;
-
-    obj_arr.forEach(function(obj) {
-      var this_datetime = moment(obj["_messagetime"], "DD/MM/YYYY HH:mm:ss:SSS Z");
-
-
-      if (max_datetime == null) {
-          max_datetime = this_datetime;
-      }
-      else {
-        if (this_datetime.isAfter(max_datetime)) {
-          max_datetime = this_datetime;
-        }
+        return {min: min_datetime, max: max_datetime}
       }
 
-      if (min_datetime == null) {
-          min_datetime = this_datetime;
+      function processMessages(csv_string) {
+        var csvjs = csvtoJS(csv_string);
+        var min_max_datetimes = minMaxDateTimes(csvjs);
+        var collections = messagesToCollectionStucture(csvjs.reverse());
+        var chartData = createChartData(collections, min_max_datetimes);
+        createChart(chartData);
       }
-      else {
-        if (this_datetime.isBefore(min_datetime)) {
-          min_datetime = this_datetime;
-        }
-      }
-    });
 
-    return {min: min_datetime, max: max_datetime}
-  }
-
-  function processMessages(csv_string) {
-    var csvjs = csvtoJS(csv_string);
-    var min_max_datetimes = minMaxDateTimes(csvjs);
-    var collections = messagesToCollectionStucture(csvjs.reverse());
-    var chartData = createChartData(collections, min_max_datetimes);
-    createChart(chartData);
-  }
-
-  $('#create-timeline').click(function() {
-    var text = $('#sumosearch').val();
-    console.log(text);
-    processMessages(text);
-  });
-
-  </script>
+      $('#create-timeline').click(function() {
+        var text = $('#sumosearch').val();
+        console.log(text);
+        processMessages(text);
+      });
+    </script>
   </body>
 </html>
