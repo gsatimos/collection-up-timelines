@@ -1,22 +1,15 @@
 <html>
   <head>
-
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="./css/bootstrap.min.css">
+    <script src="./js/bootstrap.min.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script src="./js/jquery-3.3.1.min.js"></script>
     <script src="./js/moment.js"></script>
-
   </head>
   <body>
     <form>
       <div class="form-group">
-        <textarea
-                class="form-control"
-                id="sumosearch"
-                rows="3"
-                placeholder=""
-        ></textarea>
+        <textarea class="form-control" id="sumosearch" rows="3" placeholder=""></textarea>
       </div>
     </form>
     <button type="button" id="create-timeline" class="btn btn-info">Create Timeline</button>
@@ -41,12 +34,10 @@
         }
         result.push(obj);
       }
-
       return result;
   }
 
   function messagesToCollectionStucture(messages) {
-    console.log('num messages: ' + messages.length);
     var collections = {};
 
     messages.forEach(function(message) {
